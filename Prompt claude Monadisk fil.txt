@@ -1,0 +1,77 @@
+Prompt claude Monadisk fil
+
+Jeg har hos GESIS.org, set at både ISSP (international social survey programme) og EVS (european value study) har trend files, altså en fil med de samlede undersøgelser. 
+Hvordan laver man en sådan trend file, det vil jeg nemlig gerne gøre med tryghedsmålingerne fra trygfonden
+
+Output:
+En trend file er i bund og grund flere års (bølgers) tværsnitsundersøgelser stablet oven på hinanden i ét datasæt, hvor variablene er harmoniseret på tværs af årene, så man kan se udviklingen over tid. Sådan griber man det typisk an:
+
+1. Kortlæg alle bølger
+Saml codebooks/dokumentation for hvert år af tryghedsmålingen. Notér for hvert spørgsmål: præcis ordlyd, svarkategorier, variabelnavn og evt. ændringer år for år. Det er det vigtigste og mest tidskrævende trin – uden det kan man ikke stole på en sammenlignelig fil.
+
+2. Vurdér komparabilitet
+For hvert spørgsmål: er ordlyden identisk hvert år? Er svarskalaen den samme (fx 5-punkts vs. 4-punkts)? Er der omkodet undervejs? Hvis spørgsmålet er ændret væsentligt, bør det enten udelades af trend-filen eller markeres tydeligt som ikke-sammenligneligt for de berørte år (sådan gør ISSP og EVS det også – de har "comparability notes" i deres dokumentation).
+
+3. Lav en harmoniseringsnøgle (mapping)
+Byg et regneark/dokument der viser: standardvariabelnavn → årsspecifikt variabelnavn og kodning i hvert år. Dette er dit "codebook for trend-filen" og bør følge med som dokumentation, ligesom ISSP og EVS udgiver.
+
+4. Omkod og navngiv ensartet
+I fx R: indlæs hvert års datasæt, omdøb/omkod variable til de fælles standardnavne/-koder, og tilføj en "wave"/"year"-variabel. Håndtér manglende spørgsmål (ikke stillet et givent år) som reel missing (NA), ikke som 0 eller "ved ikke".
+
+5. Stack datasættene (long format)
+Brug bind_rows() (dplyr) eller rbind() til at lægge årene oven på hinanden, én række pr. respondent pr. år. Sørg for at ID-variable ikke kolliderer på tværs af år (lav evt. et kombineret ID: år + løbenummer).
+
+6. Vægte
+Tjek om der findes årlige vægte, og om de kan bruges direkte i en pooled analyse, eller om der skal laves en trend-vægt (fx normaliseret så hvert år vejer ens, medmindre man bevidst vil vægte efter stikprøvestørrelse).
+
+7. Validér
+Kør simple frekvenser/means for nøglevariable år for år og sammenlign med de oprindelige årsrapporter — det fanger fejl i omkodningen, før man går videre til analyse.
+
+8. Dokumentér
+Lav en trend-fil-dokumentation (samme princip som ISSP/EVS): hvilke variable indgår, hvilke år de dækker, kendte brud i tidsserien, og hvordan vægte er konstrueret.
+
+Da tryghedsmålingerne fra TrygFonden ikke ligger centralt harmoniseret et sted (som ISSP/EVS gør via GESIS), er trin 1-3 formentlig den store opgave — at få fat i alle årenes datasæt/codebooks og selv bygge harmoniseringsnøglen, inden man overhovedet kan begynde at kode i R.
+
+Skal jeg hjælpe med at sætte R-koden op til trin 4-6, når du har fat i datasættene?
+
+
+Prompt: (vedhæftet 'monadisk overblik.xlsx')
+Jeg har lavet dette overblik over variable navne.
+Så nu bør jeg lave overblik over spørgsmålsformulering og skalering af variablerne (i et word dokument?)
+
+Output:
+Godt spørgsmål – og her vil jeg faktisk anbefale imod Word og for at blive i samme type struktur som variabeloverblikket, du allerede har lavet. Et par grunde:
+
+Hvorfor ikke Word:
+
+Du skal kunne krydsreferere systematisk på tværs af ~39 bølger og ~19+ koncepter – det bliver hurtigt uoverskueligt som løbende tekst.
+Du skal senere bruge oplysningerne til at kode harmoniseringen i R. Et regneark kan du læse direkte ind (readxl); et Worddokument skal du først parse eller sidde og taste fra manuelt.
+Word er godt til formidling af færdig dokumentation (fx til en rapport eller til TrygFonden), men ikke som arbejdsredskab undervejs.
+
+Forslag til struktur:
+Jeg vil udvide/omstrukturere til long format i stedet for at beholde matrix-formatet (koncept × bølge i celler). Det vil sige én række per koncept-bølge-kombination, med kolonner:
+
+Koncept	Bølge	Variabelnavn	Spørgsmålstekst	Svarkategorier/skala	Note
+
+Fordele ved long format her:
+
+Du kan have så lang tekst i "spørgsmålstekst" og "svarkategorier" som nødvendigt, uden det bliver klemt ind i en matrix-celle
+Det er let at filtrere/sortere (fx: vis mig alle rækker for "Social tillid" og se om ordlyden er ens på tværs af år)
+Det bliver direkte importerbart i R som din harmoniseringsnøgle – hver række bliver i praksis en instruktion til recode/rename
+
+Du kunne evt. lave det som et nyt ark i samme projektmappe, genereret fra dit eksisterende variabeloverblik (samme rækker/koncepter, bare pivoteret om til long format), så du undgår at skulle indtaste variabelnavnene igen.
+
+Når det er lavet, kan du altid generere et pænt Worddokument ud fra det bagefter til formidling – men arbejdsgrundlaget bør være i regnearksform.
+
+Skal jeg lave en skabelon (evt. forudfyldt med koncepter og bølger fra dit eksisterende ark), som du så kan udfylde med ordlyd og skalering?
+
+Prompt:
+Du må meget gerne hjælpe mig igang, gerne med en skabelon
+
+Output: 
+Skabelonen har to ark:
+
+Vejledning – forklarer struktur og arbejdsgang.
+Spørgsmål_og_skala – long format med Koncept, Bølge og Variabelnavn forudfyldt fra dit eksisterende overblik (1.311 rækker, sorteret så alle bølger for samme koncept står samlet). De gule kolonner (Spørgsmålstekst, Svarkategorier/skala, Sammenlignelig, Note) er dem du selv skal udfylde – række 2 er et udfyldt eksempel til inspiration.
+
+Da det er 1.311 rækker på tværs af alle undersøgelsestyper i dit overblik, vil jeg foreslå at du bruger autofilteret til at starte med kun Tryg-bølgerne og de centrale tryghedskoncepter (fx "Grundlæggende tryghed (GUT)", "Tryghed efter mørkets frembrud" og de enkelte bekymringsspørgsmål) – det er dem, der reelt skal ind i trend-filen.
