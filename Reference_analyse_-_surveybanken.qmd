@@ -1,0 +1,551 @@
+---
+title: "Referenceanalyse (surveybanken)"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(haven)
+library(lubridate)
+library(tidytext)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(tibble)
+library(scales)
+library(survey)
+library(knitr)
+library(kableExtra)
+library(purrr)
+library(labeling)
+library(broom)
+library(crosstable)
+library(flextable)
+library(vcdExtra)
+library(psych)
+library(stargazer)
+library(see)
+library(patchwork)
+library(performance)
+library(modelsummary)
+library(marginaleffects)
+library(MASS)
+library(nnet)
+```
+
+```{r}
+data <- read_sav("Z:/Data på Surveybanken/Valgundersøgelser/Valgundersøgelse 2026 (YouGov)/DK26851810_Valgundersøgelse FT26 - Updated results/Valgundersøgelse2026_gymnasieelever.sav")
+```
+
+```{r}
+# -----------------------------
+# LABELS
+# -----------------------------
+data$gender <- factor(
+  data$gender,
+  levels = c(1, 2),
+  labels = c("Kvinde", "Mand")
+)
+
+data$profile_age3 <- factor(
+  data$profile_age3,
+  levels = 1:8,
+  labels = c(
+    "18-29 år",
+    "30-39 år",
+    "40-49 år",
+    "50-59 år",
+    "60-69 år",
+    "70-79 år",
+    "80-89 år",
+    "90+ år"
+  ),
+  ordered = TRUE
+)
+
+data$region <- factor(
+  data$region,
+  levels = 1:5,
+  labels = c(
+    "Hovedstaden",
+    "Sjælland",
+    "Syddanmark",
+    "Midtjylland",
+    "Nordjylland"
+  )
+)
+
+data$Q5_venstre_højre <- factor(
+  data$Q5_venstre_højre,
+  levels = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+  labels = c(
+    "Ø: Enhedslisten",
+    "Å: Alternativet",
+    "F: SF - Socialistisk Folkeparti",
+    "A: Socialdemokratiet",
+    "B: Radikale Venstre",
+    "M: Moderaterne",
+    "V: Venstre",
+    "C: Det konservative folkeparti",
+    "Æ: Danmarksdemokraterne",
+    "I: Liberal Alliance",
+    "O: Dansk Folkeparti",
+    "H: Borgernes parti"
+  )
+)
+
+data$Q3 <- factor(
+  data$Q3,
+  levels = c(1,2,3,4),
+  labels = c(
+    "Meget",
+    "Noget",
+    "Kun lidt",
+    "Slet ikke"
+  )
+)
+
+data$Q6 <- factor(
+  data$Q6,
+  levels = c(1,2,3,4,5),
+  labels = c(
+    "På selve valgdagen",
+    "I de sidste dage før valget",
+    "Tidligere i valgkampen",
+    "Jeg vidste allerede før valgkampen, men efter 1. januar 2026, hvad jeg ville stemme",
+    "Jeg vidste allerede før 1. december 2025, hvad jeg ville stemme"
+  )
+)
+
+data$Q15 <- factor(
+  data$Q15,
+  levels = c(1,2,3),
+  labels = c(
+    "Donald Trump",
+    "Vladimir Putin",
+    "Ingen forskel"
+  )
+)
+
+data$Q16 <- factor(
+  data$Q16,
+  levels = c(1,2,3,4,5),
+  labels = c(
+    "Meget positiv",
+    "Overvejende positiv",
+    "Hverken positiv eller negativ",
+    "Overvejende negativ",
+    "Meget negativ"
+  )
+)
+
+data$Q17a <- factor(
+  data$Q17a,
+  levels = c(1,2),
+  labels = c(
+    "Man kan stole på de fleste mennesker",
+    "Man kan ikke være forsigtig nok"
+  )
+)
+
+data$Q21 <- factor(
+  data$Q21,
+  levels = c(1,2,3),
+  labels = c(
+    "Stramningerne har været passende",
+    "Stramningerne er gået for vidt",
+    "Stramningerne har ikke været vidtgående nok"
+  )
+)
+
+data$Q27 <- factor(
+  data$Q27,
+  levels = c(1,2,3,4),
+  labels = c(
+    "Ligestillingen er gået for langt",
+    "Ligestillingen er stort set opnået",
+    "Der er stadig ikke ligestilling på en del vigtige områder",
+    "Forskelbehandling gennemsyrer stadig hele samfundet"
+  )
+)
+
+vars <- c("Q14b_23b", "Q14a_8", "Q14b_19a", "Q14a_12", "Q14b_9", "Q14a_16", "Q14a_4")
+
+data[vars] <- lapply(data[vars], function(x) {
+  factor(x,
+         levels = c(1, 2, 3, 4, 5),
+         labels = c(
+           "Helt enig",
+           "Delvist enig",
+           "Hverken enig eller uenig",
+           "Delvist uenig",
+           "Helt uenig"
+         )
+  )
+})
+```
+
+# Uvægtet analyse
+
+## Deskriptive analyser
+
+Frekvenstabel over alder i kategorier
+
+```{r}
+tab <- table(data$profile_age3)
+
+data.frame(
+  Antal = as.vector(tab),
+  Procent = round(prop.table(tab) * 100, 1)
+)
+```
+
+Frekvenstabel over partivalg (fra venstre til højre)
+
+```{r}
+tab2 <- table(data$Q5_venstre_højre)
+
+data.frame(
+  Antal = as.vector(tab2),
+  Procent = round(prop.table(tab2) * 100, 1)
+)
+```
+
+Frekvenstabel over interesse for politik
+
+```{r}
+tab3 <- table(data$Q3)
+
+data.frame(
+  Antal = as.vector(tab3),
+  Procent = round(prop.table(tab3) * 100, 1)
+)
+```
+
+## Krydstabeller + chi\^2
+
+Krydstabel mellem køn og holdning til om der er opnået ligestilling
+
+```{r}
+cont_table <- table(data$gender, data$Q27)
+cont_table
+round(prop.table(cont_table, margin=1)*100, 2)
+
+chisq_result <- chisq.test(cont_table)
+print(chisq_result)
+```
+
+Krydstabel mellem region og holdning til om det er OK der sættes vindmøller op i ens område
+
+```{r}
+cont_table2 <- table(data$region, data$Q14b_23b)
+cont_table2
+round(prop.table(cont_table2, margin=1)*100, 2)
+
+chisq_result2 <- chisq.test(cont_table2)
+print(chisq_result2)
+```
+
+Krydstabel mellem interesse for politik og hvornår man besluttede sig for hvad man ville stemme
+
+```{r}
+cont_table3 <- table(data$Q3, data$Q6)
+cont_table3
+round(prop.table(cont_table3, margin=1)*100, 2)
+
+chisq_result3 <- chisq.test(cont_table3)
+print(chisq_result3)
+```
+
+## Korrelation
+
+Korrelationsmatrice mellem holdning til grænsekontrol, indvandring udgør en trussel om national egenart, regeringens stramninger de sidste 10-15 år.
+
+```{r}
+data$Q14a_8_num <- as.numeric(data$Q14a_8)
+data$Q14b_19a_num <- as.numeric(data$Q14b_19a)
+data$Q21_num <- as.numeric(data$Q21)
+
+corr.test(data[, c("Q14a_8_num", "Q14b_19a_num", "Q21_num")])
+```
+
+Korrelationsmatrice mellem holdning til militær støtte til Ukraine, generel holdning til EU, større samarbejde om forsvarspolitik i EU, atomvåben som del af europæisk samarbejde
+
+```{r}
+data$Q14a_12_num <- as.numeric(data$Q14a_12)
+data$Q16_num <- as.numeric(data$Q16)
+data$Q14b_9_num <- as.numeric(data$Q14b_9)
+data$Q14a_16_num <- as.numeric(data$Q14a_16)
+
+corr.test(data[, c("Q14a_12_num", "Q16_num", "Q14b_9_num", "Q14a_16_num")])
+```
+
+## Regressioner
+
+```{r}
+data$gender_num           <- as.numeric(data$gender)
+data$Q5_venstre_højre_num <- as.numeric(data$Q5_venstre_højre)
+```
+
+#### Lineær regression
+
+Afhængig variabel: Hvor godt man synes om socialdemokratiet og uafhængige: køn, alder og partivalg
+
+```{r}
+model_1 <- lm(Q9_1 ~ gender_num + age + Q5_venstre_højre_num, data = data)
+
+stargazer(model_1,
+          type = "text", 
+          star.cutoffs = c(0.05, 0.01))
+```
+
+#### Logistisk (biomial) regression
+
+Afhængig variabel: xxx og uafhængige:
+
+```{r}
+data$Q17a_num <- as.numeric(data$Q17a)
+data$Q17a_bin <- ifelse(data$Q17a_num == 2, 1, 0)
+
+model_2 <- glm(
+  Q17a_bin ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  family = binomial(link = "logit")
+)
+
+stargazer(
+  model_2,
+  type = "text",
+  apply.coef = exp,
+  star.cutoffs = c(0.05, 0.01)
+)
+```
+
+#### Ordinal logistisk regression
+
+Afhængig variabel: xxx og uafhængige:
+
+```{r}
+model_3 <- polr(
+  as.factor(Q14a_4) ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  Hess = TRUE
+)
+
+stargazer(
+  model_3,
+  type = "text",
+  apply.coef = exp,
+  star.cutoffs = c(0.05, 0.01)
+)
+```
+
+#### Multinomial logistisk regression
+
+Afhængig variabel: xxx og uafhængige:
+
+```{r}
+model_4 <- multinom(
+  factor(Q15) ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  trace = FALSE
+)
+
+stargazer(
+  model_4,
+  type = "text",
+  apply.coef = exp,
+  star.cutoffs = c(0.05, 0.01),
+  digits = 2
+)
+```
+
+# Vægtet analyse
+
+Samme analyse som ovenfor, men vægtet med `data$weight`.
+
+```{r}
+design <- svydesign(
+  ids = ~1,
+  weights = ~weight,
+  data = data
+)
+```
+
+## Deskriptive analyser (vægtet)
+
+Frekvenstabel over alder i kategorier
+
+```{r}
+tab_w <- svytable(~profile_age3, design)
+
+data.frame(
+  Antal = as.vector(tab_w),
+  Procent = round(prop.table(tab_w) * 100, 1)
+)
+```
+
+Frekvenstabel over partivalg (fra venstre til højre)
+
+```{r}
+tab2_w <- svytable(~Q5_venstre_højre, design)
+
+data.frame(
+  Antal = as.vector(tab2_w),
+  Procent = round(prop.table(tab2_w) * 100, 1)
+)
+```
+
+Frekvenstabel over interesse for politik
+
+```{r}
+tab3_w <- svytable(~Q3, design)
+
+data.frame(
+  Antal = as.vector(tab3_w),
+  Procent = round(prop.table(tab3_w) * 100, 1)
+)
+```
+
+## Krydstabeller + chi\^2 (vægtet)
+
+Krydstabel mellem køn og holdning til om der er opnået ligestilling
+
+```{r}
+cont_table_w <- svytable(~gender + Q27, design)
+cont_table_w
+round(prop.table(cont_table_w, margin=1)*100, 2)
+
+chisq_result_w <- svychisq(~gender + Q27, design)
+print(chisq_result_w)
+```
+
+Krydstabel mellem region og holdning til om det er OK der sættes vindmøller op i ens område
+
+```{r}
+cont_table2_w <- svytable(~region + Q14b_23b, design)
+cont_table2_w
+round(prop.table(cont_table2_w, margin=1)*100, 2)
+
+chisq_result2_w <- svychisq(~region + Q14b_23b, design)
+print(chisq_result2_w)
+```
+
+Krydstabel mellem interesse for politik og hvornår man besluttede sig for hvad man ville stemme
+
+```{r}
+cont_table3_w <- svytable(~Q3 + Q6, design)
+cont_table3_w
+round(prop.table(cont_table3_w, margin=1)*100, 2)
+
+chisq_result3_w <- svychisq(~Q3 + Q6, design)
+print(chisq_result3_w)
+```
+
+## Korrelation (vægtet)
+
+Korrelationsmatrice mellem holdning til grænsekontrol, indvandring udgør en trussel om national egenart, regeringens stramninger de sidste 10-15 år.
+
+```{r}
+vars_corr1 <- data[, c("Q14a_8_num", "Q14b_19a_num", "Q21_num")]
+complete1 <- complete.cases(vars_corr1)
+
+cov.wt(
+  vars_corr1[complete1, ],
+  wt = data$weight[complete1],
+  cor = TRUE
+)$cor
+```
+
+Korrelationsmatrice mellem holdning til militær støtte til Ukraine, generel holdning til EU, større samarbejde om forsvarspolitik i EU, atomvåben som del af europæisk samarbejde
+
+```{r}
+vars_corr2 <- data[, c("Q14a_12_num", "Q16_num", "Q14b_9_num", "Q14a_16_num")]
+complete2 <- complete.cases(vars_corr2)
+
+cov.wt(
+  vars_corr2[complete2, ],
+  wt = data$weight[complete2],
+  cor = TRUE
+)$cor
+```
+
+## Regressioner (vægtet)
+
+#### Lineær regression
+
+Afhængig variabel: Hvor godt man synes om socialdemokratiet og uafhængige: køn, alder og partivalg
+
+```{r}
+model_1_w <- lm(
+  Q9_1 ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  weights = weight
+)
+
+stargazer(model_1_w,
+          type = "text", 
+          star.cutoffs = c(0.05, 0.01))
+```
+
+#### Logistisk (biomial) regression
+
+Afhængig variabel: xxx og uafhængige:
+
+```{r}
+model_2_w <- glm(
+  Q17a_bin ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  family = binomial(link = "logit"),
+  weights = weight
+)
+
+stargazer(
+  model_2_w,
+  type = "text",
+  apply.coef = exp,
+  star.cutoffs = c(0.05, 0.01)
+)
+```
+
+#### Ordinal logistisk regression
+
+Afhængig variabel: xxx og uafhængige:
+
+```{r}
+model_3_w <- polr(
+  as.factor(Q14a_4) ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  weights = weight,
+  Hess = TRUE
+)
+
+stargazer(
+  model_3_w,
+  type = "text",
+  apply.coef = exp,
+  star.cutoffs = c(0.05, 0.01)
+)
+```
+
+#### Multinomial logistisk regression
+
+Afhængig variabel: xxx og uafhængige:
+
+```{r}
+model_4_w <- multinom(
+  factor(Q15) ~ gender_num + age + Q5_venstre_højre_num,
+  data = data,
+  weights = weight,
+  trace = FALSE
+)
+
+stargazer(
+  model_4_w,
+  type = "text",
+  apply.coef = exp,
+  star.cutoffs = c(0.05, 0.01),
+  digits = 2
+)
+```
