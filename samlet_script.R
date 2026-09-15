@@ -123,7 +123,7 @@ library(haven)
 ikke_normaliser <- c("koen", "region", "stilling", "parti_sidst", "parti_naeste",
                      "sektor_offentlig_privat")
 
-missing_regex <- regex("ved ikke|ikke svar|ønsker ikke|ikke besvaret", ignore_case = TRUE)
+missing_regex <- regex("ved ikke|ikke svar|ønsker ikke|ikke besvaret|ikke relevant", ignore_case = TRUE)
 
 ren_og_normaliser_variabel <- function(x) {
   if (!is.numeric(x) && !haven::is.labelled(x)) return(x)
@@ -281,9 +281,9 @@ rekod_parti_variabel <- function(bolge_navn, variabel) {
   assign(bolge_navn, df, envir = .GlobalEnv)
 }
 
-alle_bolger <- unique(parti_noegle$bolge)
-walk(alle_bolger, ~ rekod_parti_variabel(.x, "parti_sidst"))
-walk(alle_bolger, ~ rekod_parti_variabel(.x, "parti_naeste"))
+alle_bolger_parti <- unique(parti_noegle$bolge)
+walk(alle_bolger_parti, ~ rekod_parti_variabel(.x, "parti_sidst"))
+walk(alle_bolger_parti, ~ rekod_parti_variabel(.x, "parti_naeste"))
 
 alle_partier <- sort(unique(parti_noegle$Standardkategori[!is.na(parti_noegle$Standardkategori)]))
 
@@ -299,8 +299,8 @@ lav_parti_dummies <- function(bolge_navn, variabel) {
   assign(bolge_navn, df, envir = .GlobalEnv)
 }
 
-walk(alle_bolger, ~ lav_parti_dummies(.x, "parti_sidst"))
-walk(alle_bolger, ~ lav_parti_dummies(.x, "parti_naeste"))
+walk(alle_bolger_parti, ~ lav_parti_dummies(.x, "parti_sidst"))
+walk(alle_bolger_parti, ~ lav_parti_dummies(.x, "parti_naeste"))
 
 #Stilling
 library(readxl)
@@ -415,7 +415,6 @@ library(dplyr)
 library(purrr)
 
 standardnavne_vars <- setdiff(unique(harm$Standardnavn), "stilling")
-standardnavne_vars <- c(standardnavne_vars, "tryghed_internet")
 
 fast_id_vars <- c("respondent_id", "har_panel_id", "boelge", "tidspunkt")
 
