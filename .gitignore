@@ -53,3 +53,9 @@ rsconnect/
 # data 
 DK26037950_TM05_TM25_3_Monadisk.sav
 
+
+# Raw survey data (respondent-level, must not be public)
+monadisk_fil.csv
+panel_data.csv
+'Spoergsmaalsformulering_og_skalering_skabelon (1).xlsx'
+ Spoergsmaalsformulering_og_skalering_v4_endelig.xlsx
